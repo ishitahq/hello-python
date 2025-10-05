@@ -2,18 +2,18 @@ pipeline {
   agent any
 
   environment {
+    // Jenkins VM IP for SonarQube access
     SONARQUBE = 'sonarqube'
     SCANNER = 'SonarScanner'
     SONAR_PROJECT_KEY = 'hello-python'
     SONAR_API_TOKEN = credentials('sonar-token') 
-    // CHANGE 1: Updated Jenkins VM IP for SonarQube host URL
-    SONAR_HOST_URL = 'http://35.224.107.186:9000'
+    SONAR_HOST_URL = 'http://35.224.107.186:9000' // YOUR JENKINS VM IP
   }
 
   stages {
     stage('Checkout') {
       steps {
-        // CHANGE 2: Updated GitHub Username
+        // Your GitHub repository URL
         git branch: 'main', url: 'https://github.com/ishitahq/hello-python.git'
       }
     }
@@ -24,9 +24,10 @@ pipeline {
           echo "Installing dependencies..."
           python3 -m pip install --upgrade pip
           pip3 install --user -r requirements.txt
-
+          
           echo "Running tests..."
-          python3 -m pytest -q
+          # FIX: Explicitly set PYTHONPATH so 'from app import app' works inside tests/
+          env PYTHONPATH=$PWD python3 -m pytest -q
         '''
       }
     }
@@ -50,20 +51,22 @@ pipeline {
 
     stage('Deploy to App VM') {
       steps {
+        // Uses the SSH key stored in Jenkins credentials with ID 'gce-ssh'
         sshagent(credentials: ['gce-ssh']) {
           sh '''
             echo "Deploying to App VM..."
             
-            # CHANGE 3: Update App VM User (ishu4cloud) and IP (35.184.238.185) for mkdir
+            # App VM User (ishu4cloud) and IP (35.184.238.185) used for all commands:
+            
+            # 1. Create directory if it doesn't exist
             ssh -o StrictHostKeyChecking=no ishu4cloud@35.184.238.185 "mkdir -p /home/ishu4cloud/app"
             
-            # CHANGE 4: Update App VM User (ishu4cloud) and IP (35.184.238.185) for scp
+            # 2. Copy all files/folders to the App VM
             scp -o StrictHostKeyChecking=no -r * ishu4cloud@35.184.238.185:/home/ishu4cloud/app/
             
-            # CHANGE 5: Update App VM User (ishu4cloud) and IP (35.184.238.185) for systemctl restart
+            # 3. Reload systemd, restart the Flask app service, and ensure it's enabled
             ssh -o StrictHostKeyChecking=no ishu4cloud@35.184.238.185 "sudo systemctl daemon-reload && sudo systemctl restart flaskapp && sudo systemctl enable flaskapp"
             
-            # CHANGE 6: Update App VM IP (35.184.238.185) for verification echo
             echo "Deployment complete. You can curl http://35.184.238.185:8080"
           '''
         }
@@ -104,3 +107,4 @@ pipeline {
     failure { echo "Pipeline Failed" }
   }
 }
+
