@@ -91,11 +91,10 @@ pipeline {
           python3 -m pip install --upgrade pip
           pip3 install --user -r requirements.txt
           
-          # FIX: Add current directory to Python Path before testing
-          export PYTHONPATH=$PWD
-          
           echo "Running tests..."
-          python3 -m pytest -q
+          # STRONGER FIX: Set PYTHONPATH to current directory ($PWD) for this session
+          # This ensures 'app' can be imported by the test runner.
+          PYTHONPATH=$PWD python3 -m pytest -q
         '''
       }
   }
