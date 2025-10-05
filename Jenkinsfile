@@ -2,18 +2,18 @@ pipeline {
   agent any
 
   environment {
-    // Jenkins VM IP for SonarQube access
+    // Jenkins VM IP for SonarQube access (35.224.107.186)
     SONARQUBE = 'sonarqube'
     SCANNER = 'SonarScanner'
     SONAR_PROJECT_KEY = 'hello-python'
     SONAR_API_TOKEN = credentials('sonar-token') 
-    SONAR_HOST_URL = 'http://35.224.107.186:9000' // YOUR JENKINS VM IP
+    SONAR_HOST_URL = 'http://35.224.107.186:9000' 
   }
 
   stages {
     stage('Checkout') {
       steps {
-        // Your GitHub repository URL
+        // Your GitHub repository URL (ishitahq)
         git branch: 'main', url: 'https://github.com/ishitahq/hello-python.git'
       }
     }
@@ -26,7 +26,8 @@ pipeline {
           pip3 install --user -r requirements.txt
           
           echo "Running tests..."
-          # FIX: Explicitly set PYTHONPATH so 'from app import app' works inside tests/
+          # FIX: Explicitly set PYTHONPATH to current directory ($PWD) 
+          # This resolves the "No module named 'app'" error.
           env PYTHONPATH=$PWD python3 -m pytest -q
         '''
       }
@@ -56,7 +57,7 @@ pipeline {
           sh '''
             echo "Deploying to App VM..."
             
-            # App VM User (ishu4cloud) and IP (35.184.238.185) used for all commands:
+            # App VM User (ishu4cloud) and IP (35.184.238.185) used for deployment:
             
             # 1. Create directory if it doesn't exist
             ssh -o StrictHostKeyChecking=no ishu4cloud@35.184.238.185 "mkdir -p /home/ishu4cloud/app"
@@ -87,24 +88,8 @@ pipeline {
     }
   }
 
-  stage('Install & Run Tests') {
-      steps {
-        sh '''
-          echo "Installing dependencies..."
-          python3 -m pip install --upgrade pip
-          pip3 install --user -r requirements.txt
-          
-          echo "Running tests..."
-          # STRONGER FIX: Set PYTHONPATH to current directory ($PWD) for this session
-          # This ensures 'app' can be imported by the test runner.
-          PYTHONPATH=$PWD python3 -m pytest -q
-        '''
-      }
-  }
-
   post {
     success { echo "Pipeline Succeeded" }
     failure { echo "Pipeline Failed" }
   }
 }
-
