@@ -84,6 +84,22 @@ pipeline {
     }
   }
 
+  stage('Install & Run Tests') {
+      steps {
+        sh '''
+          echo "Installing dependencies..."
+          python3 -m pip install --upgrade pip
+          pip3 install --user -r requirements.txt
+          
+          # FIX: Add current directory to Python Path before testing
+          export PYTHONPATH=$PWD
+          
+          echo "Running tests..."
+          python3 -m pytest -q
+        '''
+      }
+  }
+
   post {
     success { echo "Pipeline Succeeded" }
     failure { echo "Pipeline Failed" }
